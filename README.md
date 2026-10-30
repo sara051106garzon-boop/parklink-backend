@@ -47,8 +47,15 @@ La API queda disponible en `http://127.0.0.1:5000`.
 
 ## Pruebas
 
+La suite está organizada en `tests/unit/` (pruebas unitarias puras) y
+`tests/integration/` (rutas, CORS y JWT con el `test_client` de Flask).
+Guía completa para el equipo: [`tests/README.md`](tests/README.md).
+
 ```bash
-pytest -v
+pytest                  # toda la suite
+pytest -m unit          # solo unitarias
+pytest -m integration   # solo integración
+pytest -v               # detalle de cada prueba
 ```
 
 ## Docker

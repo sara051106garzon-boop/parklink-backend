@@ -1,9 +1,20 @@
 # tests/conftest.py
 """
-Configuración común para las pruebas unitarias de ParkLink.
+Configuración raíz de la suite de pruebas de ParkLink.
 
-Centraliza la preparación de la aplicación Flask y del cliente HTTP para que
-cada caso de prueba pueda vivir en su propio archivo sin repetir código.
+Responsabilidades de este archivo:
+
+1. Dejar el paquete ``app`` importable sin importar desde qué carpeta se lance
+   ``pytest``.
+2. Etiquetar automáticamente cada prueba como ``unit`` o ``integration``
+   según la carpeta en la que viva, para poder ejecutar subconjuntos:
+
+       pytest -m unit
+       pytest -m integration
+
+Los fixtures que necesitan Flask (``flask_app`` y ``client``) viven en
+``tests/integration/conftest.py`` para que las pruebas unitarias nunca
+importen la aplicación ni toquen la base de datos.
 """
 
 import sys
@@ -11,35 +22,17 @@ from pathlib import Path
 
 import pytest
 
-# Permite ejecutar `pytest` desde la raíz del repositorio o desde Back-End.
-BACKEND_DIR = Path(__file__).resolve().parents[1]
-if str(BACKEND_DIR) not in sys.path:
-    sys.path.insert(0, str(BACKEND_DIR))
-
-import app as app_module
+# Raíz del proyecto: la carpeta que contiene el paquete `app`.
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 
-@pytest.fixture(scope="module")
-def flask_app():
-    """
-    Crea la aplicación una sola vez por archivo de prueba.
-
-    SocketIO se configura con async_mode="gevent"; gevent es el motor de
-    producción y no interviene en estas pruebas unitarias. Se sustituye
-    init_app por un no-op para no levantar un servidor de WebSockets.
-    """
-    init_app_original = app_module.socketio.init_app
-    app_module.socketio.init_app = lambda *args, **kwargs: None
-    try:
-        aplicacion = app_module.create_app()
-    finally:
-        app_module.socketio.init_app = init_app_original
-
-    aplicacion.config.update(TESTING=True)
-    return aplicacion
-
-
-@pytest.fixture()
-def client(flask_app):
-    """Cliente HTTP de Flask para invocar las rutas sin abrir un puerto."""
-    return flask_app.test_client()
+def pytest_collection_modifyitems(items):
+    """Marca cada prueba como `unit` o `integration` según su ubicación."""
+    for item in items:
+        partes = Path(str(item.fspath)).parts
+        if "integration" in partes:
+            item.add_marker(pytest.mark.integration)
+        elif "unit" in partes:
+            item.add_marker(pytest.mark.unit)
