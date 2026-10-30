@@ -58,6 +58,54 @@ pytest -m integration   # solo integración
 pytest -v               # detalle de cada prueba
 ```
 
+## Flujo de trabajo con Git
+
+`main` está **protegida**: no se puede hacer push directo. Todo entra por Pull
+Request y solo se puede mergear si las pruebas automáticas pasan.
+
+```
+rama personal  →  Pull Request  →  GitHub Actions (pytest)  →  merge a main
+```
+
+### Ramas por integrante
+
+| Integrante | Rama |
+|---|---|
+| Sara | `sara_DEV` |
+| Diego | `diego_DEV` |
+| Andrés | `andres_DEV` |
+| Nicole | `nicole_DEV` |
+
+### Pasos
+
+```bash
+# 1. Ubicarse en tu rama
+git checkout diego_DEV
+git pull origin diego_DEV
+
+# 2. Trabajar y subir
+git add .
+git commit -m "Agrega pruebas de validación de placas"
+git push origin diego_DEV
+
+# 3. En GitHub: abrir Pull Request de diego_DEV → main
+```
+
+El PR queda bloqueado hasta que el check **`pytest`** termine en verde. Si
+alguna prueba falla, el botón de merge se desactiva.
+
+## Integración continua
+
+Workflow: [`.github/workflows/tests.yml`](.github/workflows/tests.yml)
+
+Se dispara en **cada push a cualquier rama** y en **cada Pull Request hacia
+`main`**. Ejecuta:
+
+1. `python -c "import app"` — verifica que la aplicación importa.
+2. `pytest -v` — corre toda la suite del equipo.
+
+Si algo falla, el PR no se puede mergear.
+
 ## Docker
 
 ```bash
