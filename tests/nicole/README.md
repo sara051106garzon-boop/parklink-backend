@@ -14,7 +14,7 @@ tests/nicole/
 ## Reglas
 
 1. **Numeración:** usa el rango que te asigne el equipo. Sara ya ocupó
-   `001–010` y `014–024`, así que las siguientes libres empiezan en `025`.
+   `001–010`, así que las siguientes libres empiezan en `011`.
 2. **Nombre del archivo:** `test_<número>_<tema_en_snake_case>.py`
 3. **Nombre de la función:** `test_<qué_hace>_<resultado_esperado>`
 4. **Docstring** de una línea + cuerpo en `# Arrange`, `# Act`, `# Assert`.

@@ -11,28 +11,17 @@ tests/
 ├── README.md            # este archivo
 │
 ├── sara/                # Sara
-│   ├── unit/            # 10 pruebas unitarias puras
-│   │   ├── test_001_roles_enum.py
-│   │   ├── test_002_config_jwt.py
-│   │   ├── test_003_config_uri.py
-│   │   ├── test_004_correo_valido.py
-│   │   ├── test_005_correo_invalido.py
-│   │   ├── test_006_password_corta.py
-│   │   ├── test_007_password_valida.py
-│   │   ├── test_008_usuario_to_dict.py
-│   │   ├── test_009_password_no_legible.py
-│   │   └── test_010_repr_vehiculo.py
-│   └── integration/     # 10 pruebas con el test_client de Flask
-│       ├── test_014_instancias_unicas.py
-│       ├── test_015_create_app.py
-│       ├── test_016_health.py
-│       ├── test_017_blueprints.py
-│       ├── test_019_cors_permitido.py
-│       ├── test_020_cors_rechazado.py
-│       ├── test_021_jwt_sin_token.py
-│       ├── test_022_jwt_token_corrupto.py
-│       ├── test_023_jwt_token_expirado.py
-│       └── test_024_jwt_firma_invalida.py
+│   └── unit/            # 10 pruebas unitarias puras
+│       ├── test_001_roles_enum.py
+│       ├── test_002_config_jwt.py
+│       ├── test_003_config_uri.py
+│       ├── test_004_correo_valido.py
+│       ├── test_005_correo_invalido.py
+│       ├── test_006_password_corta.py
+│       ├── test_007_password_valida.py
+│       ├── test_008_usuario_to_dict.py
+│       ├── test_009_password_no_legible.py
+│       └── test_010_repr_vehiculo.py
 │
 ├── diego/               # Diego   → ver README dentro de la carpeta
 ├── andres/              # Andrés  → ver README dentro de la carpeta
@@ -85,7 +74,7 @@ nunca se repiten nombres:
 |---|---|---|
 | `001 – 010` | Sara | ✅ ocupado |
 | `011 – 013` | — | libre |
-| `014 – 024` | Sara | ✅ ocupado |
+| `014 – 024` | — | libre |
 | `025` en adelante | quien agregue | libre |
 
 > Antes de crear una prueba nueva, revisa qué número quedó libre para no
