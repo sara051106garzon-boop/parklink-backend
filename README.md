@@ -1,6 +1,7 @@
 # ParkLink — Back-End
 
 [![Pruebas](https://github.com/sara051106garzon-boop/parklink-backend/actions/workflows/tests.yml/badge.svg)](https://github.com/sara051106garzon-boop/parklink-backend/actions/workflows/tests.yml)
+[![Versión](https://img.shields.io/github/v/release/sara051106garzon-boop/parklink-backend?style=flat&color=2f81f7)](https://github.com/sara051106garzon-boop/parklink-backend/releases)
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-3.x-000000?logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
 [![MySQL](https://img.shields.io/badge/MySQL-8.x-4479A1?logo=mysql&logoColor=white)](https://www.mysql.com/)
@@ -126,6 +127,8 @@ docker compose up --build
 
 ## Documentación
 
+- [Arquitectura del sistema](docs/ARQUITECTURA.md) — diagramas de capas, modelo de datos y flujos.
+- [Referencia de la API](docs/API.md) — los 52 endpoints, roles y códigos de respuesta.
 - [Guía de estudio: las 10 pruebas unitarias](docs/GUIA_ESTUDIO_10_PRUEBAS_UNITARIAS_PARKLINK.md) — explica prueba por prueba qué se valida, por qué importa y cómo se ejecuta.
 - [Guía de pruebas para el equipo](tests/README.md) — estructura de carpetas, numeración y convenciones.
 
