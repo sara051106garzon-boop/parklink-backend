@@ -14,7 +14,6 @@ updates:
       - "dependencias"
     commit-message:
       prefix: "chore(deps)"
-      include: "scope"
 
   # Acciones de GitHub usadas en los workflows
   - package-ecosystem: "github-actions"
