@@ -1,6 +1,14 @@
 # ParkLink — Back-End
 
-API REST del sistema de gestión de parqueaderos **ParkLink**.
+[![Pruebas](https://github.com/sara051106garzon-boop/parklink-backend/actions/workflows/tests.yml/badge.svg)](https://github.com/sara051106garzon-boop/parklink-backend/actions/workflows/tests.yml)
+[![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Flask](https://img.shields.io/badge/Flask-3.x-000000?logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
+[![MySQL](https://img.shields.io/badge/MySQL-8.x-4479A1?logo=mysql&logoColor=white)](https://www.mysql.com/)
+[![Licencia: MIT](https://img.shields.io/badge/Licencia-MIT-yellow.svg)](LICENSE)
+
+API REST del sistema de gestión de parqueaderos **ParkLink**: control de entrada y
+salida de vehículos, cupos, tarifas, usuarios y reportes, con autenticación por JWT
+y roles.
 
 ## Stack
 
@@ -115,3 +123,16 @@ docker compose up --build
 ## Repositorios relacionados
 
 - Front-end Flutter: [parklink-app](https://github.com/sara051106garzon-boop/parklink-app)
+
+## Documentación
+
+- [Guía de estudio: las 10 pruebas unitarias](docs/GUIA_ESTUDIO_10_PRUEBAS_UNITARIAS_PARKLINK.md) — explica prueba por prueba qué se valida, por qué importa y cómo se ejecuta.
+- [Guía de pruebas para el equipo](tests/README.md) — estructura de carpetas, numeración y convenciones.
+
+## Autor
+
+**Sara Garzón** · [github.com/sara051106garzon-boop](https://github.com/sara051106garzon-boop)
+
+## Licencia
+
+Este proyecto está bajo la licencia [MIT](LICENSE).
