@@ -6,10 +6,10 @@ from app.services.auth_service import AuthService
 
 def test_validar_formato_correo_acepta_un_correo_correcto():
     """Un correo con usuario, arroba y dominio debe ser aceptado."""
-    # Arrange
+    # Arrange preparcion
     correo = "sara.parklink@correo.com"
 
-    # Act
+    # Act ejecucion
     es_valido = AuthService.validar_formato_correo(correo)
 
     # Assert
