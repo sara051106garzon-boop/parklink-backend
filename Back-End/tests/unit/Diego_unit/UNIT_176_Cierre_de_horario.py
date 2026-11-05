@@ -12,6 +12,7 @@ def test_crear_reserva_rechaza_hora_20_59_fuera_del_horario_declarado(app_contex
         "hora": "20:59"
     }
 
+
     # --- ACT (Actuar) ---
     resultado = crear_reserva(usuario_id_valido, datos_reserva)
 
