@@ -22,7 +22,7 @@ class AuthController:
 
         # Captura tanto 'correo' como 'email' para prevenir fallos en el formulario React
         correo = data.get("correo") or data.get("email")
-        password = data.get("password")
+        password = data.get("password") or data.get("contrasena")
 
         if not correo or not password:
             return jsonify({"mensaje": "Correo y contraseña requeridos."}), 400
@@ -49,6 +49,7 @@ class AuthController:
         # Respuesta estructurada limpia compatible con api_auth.jsx y Login.jsx
         return jsonify({
             "mensaje": "Autenticación exitosa.",
+            "access_token": token,
             "token": token,
             "usuario": usuario.to_dict()
         }), 200

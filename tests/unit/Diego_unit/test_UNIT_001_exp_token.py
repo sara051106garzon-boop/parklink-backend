@@ -1,5 +1,6 @@
 from datetime import timedelta
-from app.config import Config
+# AQUI ESTA LA CORRECCIÓN: Apuntar a la carpeta 'config' y luego al archivo 'settings'
+from app.config.settings import Config
 
 def test_config_token_jwt_expira_en_8_horas():
     # --- ARRANGE (Preparar) ---

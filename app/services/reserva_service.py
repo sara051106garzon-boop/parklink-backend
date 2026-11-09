@@ -3,7 +3,7 @@ ParkLink - Servicio para la gestión integral de reservas de estacionamiento.
 Capa de negocio (Service Layer).
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from app.database.database import db
 from app.models.reserva import Reserva
 from app.models.vehiculo import Vehiculo
@@ -58,7 +58,7 @@ def crear_reserva(usuario_id, data):
         except ValueError:
             return {"error": "Formato de hora inválido. Use HH:MM."}
 
-        if hora_reserva.hour < 6 or hora_reserva.hour > 20:
+        if hora_reserva < time(6) or hora_reserva > time(20):
             return {"error": "Las reservas solo están disponibles entre las 06:00 y las 20:00."}
 
         # ==========================

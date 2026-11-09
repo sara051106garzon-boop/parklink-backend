@@ -23,7 +23,8 @@ socketio = SocketIO(
 )
 
 
-def create_app():
+
+def create_app(test_config=None):
     """
     Crea y configura la aplicación Flask de ParkLink.
     Devuelve la instancia lista para ser ejecutada por run.py o Gunicorn/eventlet.
@@ -32,6 +33,8 @@ def create_app():
 
     # ── 1. Configuración ──────────────────────────────────────────────────────
     app.config.from_object(Config)
+    if test_config is not None:
+        app.config.update(test_config)
 
     # ── 2. CORS (una sola vez) ────────────────────────────────────────────────
     # Permite solicitudes HTTP REST desde el frontend React en desarrollo.
