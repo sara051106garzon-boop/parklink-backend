@@ -1,33 +1,28 @@
-"""
-ParkLink - Pruebas Unitarias: Métricas y KPIs
-Ubicación: tests/unit/test_kpis.py
-"""
+"""UNIT 057 · KPIs · Porcentaje de ocupación y tiempo promedio de parqueo."""
+
 
 def test_calcular_porcentaje_ocupacion_general(app_context):
-    """
-    Valida el cálculo matemático del porcentaje de ocupación general.
-    """
-    # --- ARRANGE ---
+    """El porcentaje de ocupación es celdas ocupadas sobre el total."""
+    # Arrange
     total_celdas = 100
     celdas_ocupadas = 45
 
-    # --- ACT ---
+    # Act
     porcentaje = round((celdas_ocupadas / total_celdas) * 100, 2)
 
-    # --- ASSERT ---
+    # Assert
     assert porcentaje == 45.0
     assert isinstance(porcentaje, float)
 
+
 def test_kpi_tiempo_promedio_parqueo(app_context):
-    """
-    Valida el cálculo del tiempo promedio de permanencia vehicular en minutos.
-    """
-    # --- ARRANGE ---
+    """El tiempo promedio de permanencia se mide en minutos."""
+    # Arrange
     duraciones_minutos = [120, 180, 60, 240]
 
-    # --- ACT ---
+    # Act
     promedio = sum(duraciones_minutos) / len(duraciones_minutos)
 
-    # --- ASSERT ---
+    # Assert
     assert promedio == 150.0
     assert isinstance(promedio, float)

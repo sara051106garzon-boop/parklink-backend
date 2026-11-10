@@ -5,8 +5,8 @@ from flask_jwt_extended import decode_token
 from app.models.usuario import RolEnum, Usuario
 
 
-def test_login_emite_jwt_y_devuelve_perfil(client, app, db_session):
-    """INT-001 | Severidad: Alta. Login activo debe devolver un JWT utilizable."""
+def test_login_emite_jwt_y_devuelve_perfil(client_de_diego, app, db_session):
+    """INT 049 | Severidad: Alta. Login activo debe devolver un JWT utilizable."""
     # Arrange
     with app.app_context():
         usuario = Usuario(
@@ -23,7 +23,7 @@ def test_login_emite_jwt_y_devuelve_perfil(client, app, db_session):
     payload = {"correo": "ana@parklink.com", "contrasena": "ClaveSegura123!"}
 
     # Act
-    response = client.post("/api/auth/login", json=payload)
+    response = client_de_diego.post("/api/auth/login", json=payload)
 
     # Assert
     assert response.status_code == 200
@@ -36,4 +36,3 @@ def test_login_emite_jwt_y_devuelve_perfil(client, app, db_session):
     with app.app_context():
         claims = decode_token(data["access_token"])
     assert claims["sub"] == str(usuario_id)
-

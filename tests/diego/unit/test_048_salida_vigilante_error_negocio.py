@@ -1,11 +1,14 @@
+"""UNIT 048 · Vigilante · Salida de un vehículo que nunca ingresó devuelve 400."""
+
 from app.database.database import db
 from app.models.turno import Turno
 from app.models.usuario import RolEnum, Usuario
 from app.models.vehiculo import Vehiculo
 
 
-def test_salida_vigilante_error_de_negocio_devuelve_400(client, headers_vigilante, test_database):
-    # --- ARRANGE ---
+def test_salida_vigilante_error_de_negocio_devuelve_400(client_de_diego, headers_vigilante, test_database):
+    """No se puede registrar la salida de un vehículo sin ingreso previo."""
+    # Arrange
     payload_salida = {
         "placa": "ABC123"
     }
@@ -31,14 +34,14 @@ def test_salida_vigilante_error_de_negocio_devuelve_400(client, headers_vigilant
     ])
     db.session.commit()
 
-    # --- ACT ---
-    response = client.post(
+    # Act
+    response = client_de_diego.post(
         "/api/vigilante/salida",
         json=payload_salida,
         headers=headers_vigilante
     )
 
-    # --- ASSERT ---
+    # Assert
     assert response.status_code == 400
     datos = response.get_json()
     assert datos.get("error") == "El vehículo nunca ha ingresado"

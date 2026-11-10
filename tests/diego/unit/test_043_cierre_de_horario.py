@@ -1,12 +1,17 @@
-from unittest.mock import patch, MagicMock
-from app.services.reserva_service import crear_reserva
+"""UNIT 043 · ReservaService · Las reservas solo se aceptan entre 06:00 y 20:00."""
+
 from datetime import datetime, timedelta
+from unittest.mock import MagicMock, patch
+
+from app.services.reserva_service import crear_reserva
+
 
 def test_crear_reserva_rechaza_hora_20_59_fuera_del_horario_declarado(app_context):
-    # --- ARRANGE ---
+    """Reservar después del cierre del parqueadero debe devolver error de negocio."""
+    # Arrange
     usuario_id_valido = 1
     fecha_futura = (datetime.now() + timedelta(days=2)).strftime("%Y-%m-%d")
-    
+
     datos_reserva = {
         "vehiculo_id": 10,
         "fecha": fecha_futura,
@@ -20,15 +25,17 @@ def test_crear_reserva_rechaza_hora_20_59_fuera_del_horario_declarado(app_contex
             placa="ABC123"
         )
 
-        # --- ACT ---
+        # Act
         resultado = crear_reserva(usuario_id_valido, datos_reserva)
 
-        # --- ASSERT ---
+        # Assert
         assert isinstance(resultado, dict) and "error" in resultado
         assert "entre las 06:00 y las 20:00" in resultado["error"]
 
 
 def test_crear_reserva_acepta_hora_de_cierre_20_00(app_context):
+    """Las 20:00 sigue siendo una hora válida para reservar."""
+    # Arrange
     fecha_futura = (datetime.now() + timedelta(days=2)).strftime("%Y-%m-%d")
     datos_reserva = {
         "vehiculo_id": 10,
@@ -47,6 +54,8 @@ def test_crear_reserva_acepta_hora_de_cierre_20_00(app_context):
         )
         mock_reserva.filter_by.return_value.first.return_value = None
 
+        # Act
         resultado = crear_reserva(1, datos_reserva)
 
+    # Assert
     assert resultado["mensaje"] == "Reserva creada correctamente."

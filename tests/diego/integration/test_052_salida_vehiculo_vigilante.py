@@ -10,9 +10,9 @@ from app.models.vehiculo import Vehiculo
 
 
 def test_segunda_salida_es_rechazada_sin_alterar_estado(
-    client, app, db_session
+    client_de_diego, app, db_session
 ):
-    """INT-004 | Severidad: Alta. Una segunda salida no debe duplicar movimientos."""
+    """INT 052 | Severidad: Alta. Una segunda salida no debe duplicar movimientos."""
     # Arrange
     with app.app_context():
         vigilante = Usuario(
@@ -60,12 +60,12 @@ def test_segunda_salida_es_rechazada_sin_alterar_estado(
     headers = {"Authorization": f"Bearer {token}"}
 
     # Act
-    primera_respuesta = client.post(
+    primera_respuesta = client_de_diego.post(
         "/api/vigilante/salida",
         json={"placa": placa},
         headers=headers,
     )
-    segunda_respuesta = client.post(
+    segunda_respuesta = client_de_diego.post(
         "/api/vigilante/salida",
         json={"placa": placa},
         headers=headers,

@@ -1,15 +1,19 @@
+"""UNIT 011 · Config · El token JWT de ParkLink debe expirar en 8 horas."""
+
 from datetime import timedelta
-# AQUI ESTA LA CORRECCIÓN: Apuntar a la carpeta 'config' y luego al archivo 'settings'
+
 from app.config.settings import Config
 
+
 def test_config_token_jwt_expira_en_8_horas():
-    # --- ARRANGE (Preparar) ---
+    """La sesión del usuario se cierra sola a las 8 horas de haber iniciado."""
+    # Arrange
     tiempo_esperado = timedelta(hours=8)
 
-    # --- ACT (Actuar) ---
+    # Act
     tiempo_configurado = Config.JWT_ACCESS_TOKEN_EXPIRES
 
-    # --- ASSERT (Afirmar) ---
+    # Assert
     assert tiempo_configurado == tiempo_esperado, (
         f"Se esperaba una expiración de {tiempo_esperado}, pero se obtuvo {tiempo_configurado}"
     )

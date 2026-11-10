@@ -1,13 +1,12 @@
+"""UNIT 044 · Admin · Solo un administrador puede registrar usuarios, y no se crea ninguno."""
+
 from app.database.database import db
 from app.models.usuario import RolEnum, Usuario
 
 
-def test_registrar_usuario_deniega_a_usuario_comun(client, headers_usuario, test_database):
-    # --- ARRANGE ---
-    headers = {
-        "Authorization": "Bearer token_usuario_sin_permiso_admin",
-        "Content-Type": "application/json"
-    }
+def test_registrar_usuario_deniega_a_usuario_comun(client_de_diego, headers_usuario, test_database):
+    """Un usuario con rol USUARIO recibe 403 y la tabla queda igual."""
+    # Arrange
     payload_nuevo_usuario = {
         "nombre": "Carlos Pérez",
         "correo": "carlos@parklink.com",
@@ -25,15 +24,14 @@ def test_registrar_usuario_deniega_a_usuario_comun(client, headers_usuario, test
     ))
     db.session.commit()
     cantidad_usuarios = Usuario.query.count()
-    headers = headers_usuario
 
-    # --- ACT ---
-    response = client.post(
+    # Act
+    response = client_de_diego.post(
         "/api/admin/registrar-usuario",
         json=payload_nuevo_usuario,
-        headers=headers
+        headers=headers_usuario
     )
 
-    # --- ASSERT ---
+    # Assert
     assert response.status_code == 403
     assert Usuario.query.count() == cantidad_usuarios

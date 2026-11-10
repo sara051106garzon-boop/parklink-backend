@@ -1,15 +1,11 @@
-"""
-ParkLink - Pruebas Unitarias: Monitoreo de Alertas
-Ubicación: tests/unit/test_alertas.py
-"""
+"""UNIT 055 · Alertas · Generación y resolución de alertas técnicas."""
 
 from unittest.mock import MagicMock, patch
 
+
 def test_generar_alerta_mantenimiento_admin(app_context):
-    """
-    Valida la generación de una alerta técnica por fallo de infraestructura.
-    """
-    # --- ARRANGE ---
+    """Una alerta técnica se crea pendiente, sin resolver."""
+    # Arrange
     datos_alerta = {
         "titulo": "Fallo en Sensor Sótano 1",
         "descripcion": "El sensor de presencia en la celda A-05 no responde.",
@@ -23,23 +19,22 @@ def test_generar_alerta_mantenimiento_admin(app_context):
         mock_alerta.resuelto = False
         mock_alerta_class.return_value = mock_alerta
 
-        # --- ACT ---
+        # Act
         alerta_creada = mock_alerta_class(
             titulo=datos_alerta["titulo"],
             descripcion=datos_alerta["descripcion"],
             nivel=datos_alerta["nivel"]
         )
 
-        # --- ASSERT ---
+        # Assert
         assert alerta_creada.titulo == "Fallo en Sensor Sótano 1"
         assert alerta_creada.nivel == "ALTO"
         assert alerta_creada.resuelto is False
 
+
 def test_resolver_alerta_pendiente_exito(app_context):
-    """
-    Verifica que el administrador pueda marcar una alerta pendiente como resuelta.
-    """
-    # --- ARRANGE ---
+    """El administrador puede marcar una alerta pendiente como resuelta."""
+    # Arrange
     alerta_id = 12
     mock_alerta = MagicMock()
     mock_alerta.id = alerta_id
@@ -50,11 +45,11 @@ def test_resolver_alerta_pendiente_exito(app_context):
 
         mock_query.get.return_value = mock_alerta
 
-        # --- ACT ---
+        # Act
         alerta = mock_query.get(alerta_id)
         alerta.resuelto = True
         mock_commit()
 
-        # --- ASSERT ---
+        # Assert
         assert alerta.resuelto is True
         mock_commit.assert_called_once()

@@ -6,9 +6,9 @@ from app.models.acceso import Acceso
 
 
 def test_historial_rechaza_token_invalido_antes_de_consultar_bd(
-    client, app, db_session
+    client_de_diego, app, db_session
 ):
-    """INT-002 | Severidad: Alta. JWT inválido debe bloquear la ruta protegida."""
+    """INT 050 | Severidad: Alta. JWT inválido debe bloquear la ruta protegida."""
     # Arrange
     cantidad_accesos = db_session.query(Acceso).count()
     sentencias = []
@@ -21,7 +21,7 @@ def test_historial_rechaza_token_invalido_antes_de_consultar_bd(
 
     # Act
     try:
-        response = client.get(
+        response = client_de_diego.get(
             "/api/admin/historial",
             headers={"Authorization": "Bearer token-invalido"},
         )
@@ -35,4 +35,3 @@ def test_historial_rechaza_token_invalido_antes_de_consultar_bd(
     assert data["mensaje"]
     assert sentencias == []
     assert db_session.query(Acceso).count() == cantidad_accesos
-

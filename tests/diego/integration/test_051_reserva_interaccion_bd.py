@@ -9,8 +9,8 @@ from app.models.usuario import RolEnum, Usuario
 from app.models.vehiculo import Vehiculo
 
 
-def test_crear_reserva_persiste_datos_en_bd(client, app, db_session):
-    """INT-003 | Severidad: Alta. Reserva válida debe quedar persistida."""
+def test_crear_reserva_persiste_datos_en_bd(client_de_diego, app, db_session):
+    """INT 051 | Severidad: Alta. Reserva válida debe quedar persistida."""
     # Arrange
     with app.app_context():
         usuario = Usuario(
@@ -45,7 +45,7 @@ def test_crear_reserva_persiste_datos_en_bd(client, app, db_session):
     }
 
     # Act
-    response = client.post(
+    response = client_de_diego.post(
         "/api/usuario/reservas",
         json=payload,
         headers={"Authorization": f"Bearer {token}"},
@@ -62,4 +62,3 @@ def test_crear_reserva_persiste_datos_en_bd(client, app, db_session):
     assert reserva.fecha == fecha_reserva
     assert reserva.hora == time(10, 30)
     assert reserva.estado == "Pendiente"
-

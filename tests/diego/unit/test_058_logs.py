@@ -1,16 +1,12 @@
-"""
-ParkLink - Pruebas Unitarias: Auditoría y Registro de Logs
-Ubicación: tests/unit/test_logs.py
-"""
+"""UNIT 058 · Logs · Registro y filtrado de la auditoría del sistema."""
 
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
+
 def test_registrar_log_auditoria_cambio_configuracion(app_context):
-    """
-    Verifica el registro en el log al modificar configuraciones del sistema.
-    """
-    # --- ARRANGE ---
+    """Modificar la configuración deja un log de auditoría del administrador."""
+    # Arrange
     admin_id = 1
     accion = "CAMBIO_HORARIO_PERMITIDO"
     detalle = "Horario modificado de 06:00-20:00 a 05:00-22:00"
@@ -23,7 +19,7 @@ def test_registrar_log_auditoria_cambio_configuracion(app_context):
         mock_log.accion = accion
         mock_log_class.return_value = mock_log
 
-        # --- ACT ---
+        # Act
         nuevo_log = mock_log_class(
             usuario_id=admin_id,
             accion=accion,
@@ -32,16 +28,15 @@ def test_registrar_log_auditoria_cambio_configuracion(app_context):
         )
         mock_add(nuevo_log)
 
-        # --- ASSERT ---
+        # Assert
         assert nuevo_log.usuario_id == 1
         assert nuevo_log.accion == "CAMBIO_HORARIO_PERMITIDO"
         mock_add.assert_called_once_with(nuevo_log)
 
+
 def test_filtrar_logs_auditoria_por_usuario(app_context):
-    """
-    Verifica el filtrado correcto del historial de logs según el ID de un usuario.
-    """
-    # --- ARRANGE ---
+    """El historial de logs se puede filtrar por usuario."""
+    # Arrange
     target_user_id = 1
     logs_simulados = [
         MagicMock(usuario_id=1, accion="LOGIN"),
@@ -49,9 +44,9 @@ def test_filtrar_logs_auditoria_por_usuario(app_context):
         MagicMock(usuario_id=2, accion="LOGIN"),
     ]
 
-    # --- ACT ---
+    # Act
     logs_filtrados = [log for log in logs_simulados if log.usuario_id == target_user_id]
 
-    # --- ASSERT ---
+    # Assert
     assert len(logs_filtrados) == 2
     assert all(log.usuario_id == target_user_id for log in logs_filtrados)
