@@ -116,9 +116,11 @@ def crear_reserva(usuario_id, data):
             estado="Pendiente"
         )
 
-        if celda_obj and hasattr(nueva_reserva, "celda_id"):
+        if celda_obj:
             nueva_reserva.celda_id = celda_obj.id
-            # Actualizar estado de la celda
+            # Marcar la celda como ocupada (columna `ocupada` del modelo Celda).
+            celda_obj.ocupada = True
+            # Estado mostrado en el mapa del parqueadero.
             if hasattr(celda_obj, "estado"):
                 celda_obj.estado = "reservado"
 

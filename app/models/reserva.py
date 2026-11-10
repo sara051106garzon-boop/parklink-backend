@@ -19,6 +19,14 @@ class Reserva(db.Model):
         nullable=False
     )
 
+    # Celda elegida por el usuario en el mapa. Es opcional: si no se elige
+    # ninguna, la reserva se queda con "Asignación Automática".
+    celda_id = db.Column(
+        db.Integer,
+        db.ForeignKey("celdas.id"),
+        nullable=True
+    )
+
     fecha = db.Column(
         db.Date,
         nullable=False
