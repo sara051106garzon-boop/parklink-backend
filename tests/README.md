@@ -31,7 +31,20 @@ tests/
 │       ├── test_029_login_token_perfil.py
 │       └── test_030_reserva_con_celda.py
 │
-├── diego/               # Diego   → ver README dentro de la carpeta
+├── diego/               # Diego
+│   ├── conftest.py      # fixtures propias de Diego (app SQLite, tokens, mocks)
+│   ├── unit/            # 16 pruebas unitarias puras + 5 de módulos de negocio
+│   │   ├── test_011_exp_token_jwt_8_horas.py
+│   │   ├── test_040_vehiculo_exige_propietario.py
+│   │   ├── test_041_bcrypt_limite_72_bytes.py
+│   │   ├── ...          # 042 – 048 y 053 – 058
+│   ├── integration/     # 4 pruebas con el test_client de Flask
+│   │   ├── test_049_login_jwt_perfil.py
+│   │   ├── test_050_middleware_jwt_invalido.py
+│   │   ├── test_051_reserva_interaccion_bd.py
+│   │   └── test_052_salida_vehiculo_vigilante.py
+│   └── README.md
+│
 ├── andres/              # Andrés  → ver README dentro de la carpeta
 └── nicole/              # Nicole  → ver README dentro de la carpeta
 ```
@@ -88,11 +101,14 @@ nunca se repiten nombres:
 | Rango | Dueño | Estado |
 |---|---|---|
 | `001 – 010` | Sara | ✅ ocupado |
-| `011 – 013` | — | libre |
+| `011` | Diego | ✅ ocupado |
+| `012 – 013` | — | libre |
 | `014 – 024` | — | libre |
 | `025 – 030` | Sara | ✅ ocupado |
 | `031 - 039` | Andrés | ocupado |
-| `040` en adelante | quien agregue | libre |
+| `040 – 048` | Diego | ✅ ocupado |
+| `049 – 058` | Diego | ✅ ocupado |
+| `059` en adelante | quien agregue | libre |
 
 > Antes de crear una prueba nueva, revisa qué número quedó libre para no
 > pisar el de un compañero.
@@ -140,6 +156,21 @@ Están en `tests/conftest.py` y sirven para **todas** las carpetas:
   **end-to-end** (login real, guardar reservas, consultar historial...).
 
 Son perezosos: si tu prueba no los pide, la aplicación ni se construye.
+
+### Fixtures propias de Diego (`tests/diego/conftest.py`)
+
+Además de las globales, la carpeta de Diego define:
+
+- **`app`** (scope `session`): app Flask sobre **SQLite en memoria** con las
+  llaves foráneas activas, para pruebas que crean y consultan tablas.
+- **`test_database`** / **`db_session`**: esquema limpio por prueba y su sesión.
+- **`client_de_diego`**: `test_client` sobre esa app con base (el `client`
+  global no consulta la base).
+- **`app_context`**: contexto de aplicación para llamar servicios directamente.
+- **`token_admin`**, **`token_usuario`**, **`token_vigilante`** y sus
+  cabeceras `headers_admin`, `headers_usuario`, `headers_vigilante`.
+- **`mock_celda_libre`**, **`mock_celda_ocupada`**, **`mock_celda_reservada`**.
+- **`prevent_pymysql_connections`** (`autouse`): ninguna prueba abre MySQL.
 
 ### Ejemplo de prueba end-to-end
 
