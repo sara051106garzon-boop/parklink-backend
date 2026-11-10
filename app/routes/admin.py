@@ -14,6 +14,7 @@ from app.database.database import db
 from app.models.usuario import Usuario, RolEnum  
 from app.models.vehiculo import Vehiculo
 from app.models.configuracion import Configuracion  
+from app.models.celda import Celda  
 
 # 💥 NUEVA IMPORTACIÓN: Traemos el servicio de correo recién creado
 from app.services.email_service import EmailService
@@ -358,19 +359,25 @@ def obtener_kpis_ocupacion():
             celdas_operativas_max = 60
             celdas_movilidad_max = 10
         else:
-            celdas_admin_max = config.celdas_admin
-            celdas_operativas_max = config.celdas_operativas
-            celdas_movilidad_max = config.celdas_movilidad
+            celdas_admin_max = getattr(config, "celdas_admin", 40) or 0
+            celdas_operativas_max = getattr(config, "celdas_operativas", 60) or 0
+            celdas_movilidad_max = getattr(config, "celdas_movilidad", 10) or 0
 
         # Total global de celdas habilitadas en ParkLink
         total_celdas_sistema = celdas_admin_max + celdas_operativas_max + celdas_movilidad_max
 
-        # 2. Contar cuántos vehículos están dentro del parqueadero actualmente (estado activo)
-        # Reemplaza estas líneas por tus consultas de conteo reales (SQLAlchemy .count())
-        # Ejemplo: Vehiculo.query.filter_by(en_parqueadero=True, tipo_perfil='admin').count()
-        autos_admin_dentro = 15      # <--- Simulado para pruebas
-        autos_operativos_dentro = 35 # <--- Simulado para pruebas
-        autos_movilidad_dentro = 3   # <--- Simulado para pruebas
+        # 2. Contar cuántas celdas ocupadas hay por perfil consultando la base real
+        def _celdas_ocupadas(tipos):
+            return (
+                Celda.query
+                .filter(Celda.tipo_celda.in_(tipos))
+                .filter(Celda.ocupada.is_(True))
+                .count()
+            )
+
+        autos_admin_dentro = _celdas_ocupadas(("administrativas", "administrativo", "admin"))
+        autos_operativos_dentro = _celdas_ocupadas(("operativas", "operativo"))
+        autos_movilidad_dentro = _celdas_ocupadas(("movilidad",))
 
         total_vehiculos_dentro = autos_admin_dentro + autos_operativos_dentro + autos_movilidad_dentro
 

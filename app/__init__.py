@@ -23,15 +23,24 @@ socketio = SocketIO(
 )
 
 
-def create_app():
+def create_app(config_extra=None):
     """
     Crea y configura la aplicación Flask de ParkLink.
     Devuelve la instancia lista para ser ejecutada por run.py o Gunicorn/eventlet.
+
+    ``config_extra`` es un diccionario opcional de overrides de configuración
+    (por ejemplo, para apuntar a SQLite en memoria en las pruebas). Se aplica
+    ANTES de inicializar las extensiones, porque Flask-SQLAlchemy y JWT leen
+    la configuración una sola vez dentro de ``init_app``.
     """
     app = Flask(__name__)
 
     # ── 1. Configuración ──────────────────────────────────────────────────────
     app.config.from_object(Config)
+
+    # Overrides opcionales (pruebas, despliegues especiales, etc.)
+    if config_extra:
+        app.config.update(config_extra)
 
     # ── 2. CORS (una sola vez) ────────────────────────────────────────────────
     # Permite solicitudes HTTP REST desde el frontend React en desarrollo.

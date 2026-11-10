@@ -91,7 +91,8 @@ nunca se repiten nombres:
 | `011 – 013` | — | libre |
 | `014 – 024` | — | libre |
 | `025 – 030` | Sara | ✅ ocupado |
-| `031` en adelante | quien agregue | libre |
+| `031 - 039` | Andrés | ocupado |
+| `040` en adelante | quien agregue | libre |
 
 > Antes de crear una prueba nueva, revisa qué número quedó libre para no
 > pisar el de un compañero.
