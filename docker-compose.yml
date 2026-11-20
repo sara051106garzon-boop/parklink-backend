@@ -1,0 +1,39 @@
+# ParkLink - Back-End (contenedor de la API Flask)
+#
+# Uso en el servidor (staging/production):
+#   docker compose up -d --build
+#
+# El archivo .env debe existir junto a este archivo (lo genera el workflow
+# de despliegue) con: APP_PORT, DATABASE_URL, SECRET_KEY y JWT_SECRET_KEY.
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: parklink-backend:latest
+    container_name: parklink-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # La app escucha en 5000 dentro del contenedor (ver Dockerfile / wsgi.py).
+      APP_PORT: "5000"
+    ports:
+      # APP_PORT (valor del .env de cada entorno) -> 5000 del contenedor.
+      # Si APP_PORT no está definido, usa 5000.
+      - "${APP_PORT:-5000}:5000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health', timeout=4)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

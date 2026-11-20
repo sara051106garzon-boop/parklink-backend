@@ -78,6 +78,9 @@ class AuthService:
         if not es_valido:
             return None, error_password
 
+        if len(password.encode("utf-8")) > 72:
+            return None, "La contraseña supera la longitud máxima permitida de 72 bytes."
+
         if Usuario.query.filter_by(correo=correo).first():
             return None, "El correo ya se encuentra registrado."
 

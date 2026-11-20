@@ -1,0 +1,212 @@
+name: Despliegue a AWS EC2
+
+# Rama principal del repositorio: main (origin/HEAD -> origin/main).
+#   - push a "main"  -> Environment "staging"
+#   - tag "v*"       -> Environment "production"
+#   - workflow_dispatch -> el entorno elegido en inputs.environment
+#
+# Al publicar un tag, GitHub también dispara el evento de push a "main"; el
+# job de staging se omite en ese caso para desplegar solo producción.
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Entorno de destino"
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - production
+
+# ── Entorno resuelto una sola vez para todo el workflow ────────────────────
+# github.event.inputs.environment SOLO existe en workflow_dispatch y llega como
+# texto; en push vale '' (vacío). Ojo: NO usar el identificador `environment`
+# dentro de las expresiones del cuerpo del workflow: no es un contexto válido
+# fuera de jobs.<id>.environment y se renderiza como cadena vacía.
+# Regla: manual -> input | tag -> production | resto (push a main) -> staging.
+env:
+  DEPLOY_ENV: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || (github.ref_type == 'tag' && 'production' || 'staging') }}
+
+concurrency:
+  # Un despliegue a la vez por entorno (no cancela el que está en curso).
+  group: deploy-${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || (github.ref_type == 'tag' && 'production' || 'staging') }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Desplegar en ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || (github.ref_type == 'tag' && 'production' || 'staging') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    # Solo desde la rama principal (lanzamiento manual a staging/production).
+    # Se escribe con ${{ }} para que se evalúe como expresión booleana y no
+    # como texto ambiguo de YAML.
+    if: ${{ github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
+
+    # Usa los GitHub Environments "staging" o "production" con sus 8 secrets.
+    environment: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || (github.ref_type == 'tag' && 'production' || 'staging') }}
+
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Conectar por SSH y desplegar
+        # En un push de tag solo se despliega producción: el evento de push a
+        # "main" que GitHub dispara junto al tag se salta.
+        #   push de tag      -> ref_type=tag  e input=''  -> NO se salta  ✅
+        #   push a main      -> ref_type=branch,input=''  -> sigue
+        #   manual en main   -> input no vacío            -> sigue
+        if: ${{ !(github.ref_type == 'tag' && github.event_name == 'push') }}
+        # Bash: así un comando con error detiene el despliegue (set -euo pipefail).
+        shell: bash
+        env:
+          # Entorno resuelto, disponible como $DEPLOY_ENV dentro del script.
+          DEPLOY_ENV: ${{ env.DEPLOY_ENV }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          APP_PORT: ${{ secrets.APP_PORT }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+
+          # ── Validar que el entorno y los 8 secrets estén configurados ──
+          case "${DEPLOY_ENV:-}" in
+            staging|production) ;;
+            *)
+              echo "::error::Entorno no válido: '${DEPLOY_ENV:-}' (se esperaba staging o production)."
+              exit 1
+              ;;
+          esac
+          echo "Entorno de despliegue: $DEPLOY_ENV"
+
+          for nombre in EC2_HOST EC2_USER EC2_SSH_KEY APP_PORT DATABASE_URL SECRET_KEY JWT_SECRET_KEY DEPLOY_PATH; do
+            if [ -z "${!nombre:-}" ]; then
+              echo "::error::Falta el secret $nombre en el entorno '$DEPLOY_ENV'."
+              exit 1
+            fi
+          done
+
+          # ── Preparar la llave SSH (EC2_SSH_KEY) ──
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/ec2_deploy_key
+          chmod 600 ~/.ssh/ec2_deploy_key
+
+          # Registrar la huella del servidor para la primera conexión.
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+          # ── Script que se ejecuta dentro de la instancia ──
+          # Al usar <<'EOF' nada se expande en el runner: $DEPLOY_PATH, $APP_PORT,
+          # $GITHUB_REF_NAME, etc. se resuelven en el servidor.
+          REMOTE_SCRIPT=$(cat <<'EOF'
+          set -euo pipefail
+          cd "$DEPLOY_PATH"
+          echo "Directorio: $(pwd) · Ref: $GITHUB_REF_NAME"
+
+          # 1) Actualizar el código en DEPLOY_PATH
+          if [ -d .git ]; then
+            git fetch --prune --tags origin
+            git reset --hard "origin/$GITHUB_REF_NAME"
+            git clean -fd
+          else
+            # Primera vez: DEPLOY_PATH vacío -> clonar el repo ahí.
+            git init -q
+            git remote add origin "$GITHUB_REPOSITORY_URL"
+            git fetch --depth=1 origin "$GITHUB_REF_NAME"
+            git checkout -q -B "$GITHUB_REF_NAME" FETCH_HEAD
+          fi
+
+          # 2) Variables de entorno de la app (archivo .env en DEPLOY_PATH)
+          umask 077
+          {
+            printf 'APP_PORT=%s\n'       "$APP_ENV_PORT"
+            printf 'DATABASE_URL=%s\n'   "$APP_ENV_DATABASE_URL"
+            printf 'SECRET_KEY=%s\n'     "$APP_ENV_SECRET_KEY"
+            printf 'JWT_SECRET_KEY=%s\n' "$APP_ENV_JWT_SECRET_KEY"
+            printf 'FLASK_DEBUG=0\n'
+          } > .env
+          chmod 600 .env
+
+          # 3) Docker debe estar disponible en la instancia
+          if ! docker info >/dev/null 2>&1; then
+            echo "::error::No se puede usar Docker en este servidor (¿está instalado y el usuario en el grupo docker?)"
+            exit 1
+          fi
+          if [ ! -f docker-compose.yml ]; then
+            echo "::error::No existe docker-compose.yml en $DEPLOY_PATH"
+            exit 1
+          fi
+
+          # 4) Reiniciar la aplicación con Docker
+          if docker compose version >/dev/null 2>&1; then
+            COMPOSE="docker compose"
+          elif command -v docker-compose >/dev/null 2>&1; then
+            COMPOSE="docker-compose"
+          else
+            echo "::error::Docker Compose no está instalado en el servidor"
+            exit 1
+          fi
+
+          $COMPOSE down --remove-orphans || true
+          $COMPOSE up -d --build --remove-orphans
+          $COMPOSE ps
+
+          # 5) Verificar que el contenedor responde (usa APP_PORT del .env)
+          puerto=$(sed -n 's/^APP_PORT=//p' .env | tail -n1)
+          puerto=${puerto:-5000}
+
+          # La primera vez hay que descargar la imagen base y compilar
+          # dependencias: 30 intentos x 3 s = hasta 90 s.
+          for intento in $(seq 1 30); do
+            if curl -fsS "http://127.0.0.1:${puerto}/health" >/dev/null 2>&1; then
+              echo "Aplicación saludable en http://127.0.0.1:${puerto}/health"
+              exit 0
+            fi
+            echo "Esperando /health (intento ${intento}/30)..."
+            sleep 3
+          done
+
+          # Fallo: mostrar estado del contenedor, healthcheck de Docker y logs.
+          echo "::group::Estado del contenedor"
+          $COMPOSE ps || true
+          docker inspect --format '{{.State.Status}} | {{range .State.Health.Status}}{{.}}{{end}}' parklink-backend || true
+          echo "::endgroup::"
+          echo "::group::Últimos logs"
+          $COMPOSE logs --tail=80 || true
+          echo "::endgroup::"
+          echo "::error::La aplicación no respondió en http://127.0.0.1:${puerto}/health tras 90 s"
+          exit 1
+          EOF
+          )
+
+          # Conecta como EC2_USER@EC2_HOST con la llave EC2_SSH_KEY y envía el
+          # script + variables por stdin. El código de salida de ssh es el del
+          # script remoto, así que un fallo del despliegue falla el job.
+          printf '%s\n' "$REMOTE_SCRIPT" | ssh -i ~/.ssh/ec2_deploy_key \
+            -o StrictHostKeyChecking=yes -o ConnectTimeout=20 \
+            "$EC2_USER@$EC2_HOST" \
+            "export DEPLOY_PATH='$DEPLOY_PATH' APP_ENV_PORT='$APP_PORT' \
+          APP_ENV_DATABASE_URL='$DATABASE_URL' APP_ENV_SECRET_KEY='$SECRET_KEY' \
+          APP_ENV_JWT_SECRET_KEY='$JWT_SECRET_KEY' GITHUB_REF_NAME='$GITHUB_REF_NAME' \
+          GITHUB_REPOSITORY_URL='$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git'; bash -s"
+
+      - name: Resumen del despliegue
+        if: always()
+        run: |
+          echo "### Despliegue a AWS EC2" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Entorno: \`${DEPLOY_ENV:-desconocido}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Resultado: \`${{ job.status }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Commit: \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Ref: \`${{ github.ref_name }}\`" >> "$GITHUB_STEP_SUMMARY"

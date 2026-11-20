@@ -102,7 +102,8 @@ def actualizar_configuracion():
             }
         }), 200
 
-    except ValueError:
+    except (TypeError, ValueError):
+        db.session.rollback()
         return jsonify({
             "status": "error", 
             "message": "Formato inválido: Las celdas y tiempos deben ser valores numéricos enteros."

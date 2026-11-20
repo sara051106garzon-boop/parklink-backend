@@ -1,4 +1,3 @@
-import os
 from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_migrate import Migrate
@@ -17,10 +16,11 @@ mail = Mail()
 migrate = Migrate()
 
 # ── Inicialización global de SocketIO para WebSockets en Tiempo Real ─────────
-socketio = SocketIO(
-    cors_allowed_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
-    async_mode="gevent"  # o "eventlet" / "threading" según tu entorno de servidor
-)
+# async_mode=None deja que python-socketio elija el motor disponible:
+#   - gevent (staging/production: gunicorn con worker gthread + gevent)
+#   - threading (desarrollo local y pruebas, donde gevent puede no estar instalado)
+# Los orígenes permitidos salen de CORS_ORIGINS (ver app/config/settings.py).
+socketio = SocketIO()
 
 
 def create_app(config_extra=None):
@@ -43,10 +43,11 @@ def create_app(config_extra=None):
         app.config.update(config_extra)
 
     # ── 2. CORS (una sola vez) ────────────────────────────────────────────────
-    # Permite solicitudes HTTP REST desde el frontend React en desarrollo.
+    # Permite solicitudes HTTP REST desde el frontend (CORS_ORIGINS).
+    origenes = app.config["CORS_ORIGINS"]
     CORS(
         app,
-        resources={r"/api/*": {"origins": ["http://localhost:5173", "http://127.0.0.1:5173"]}},
+        resources={r"/api/*": {"origins": origenes}},
         supports_credentials=True,
     )
 
@@ -62,7 +63,7 @@ def create_app(config_extra=None):
     migrate.init_app(app, db)
 
     # ⚡ Inicializa y vincula Flask-SocketIO para eventos en tiempo real
-    socketio.init_app(app, cors_allowed_origins="*")
+    socketio.init_app(app, cors_allowed_origins=origenes)
 
     # ── 4. Manejadores de errores JWT ─────────────────────────────────────────
     @jwt.expired_token_loader
