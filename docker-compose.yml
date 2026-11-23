@@ -1,26 +1,45 @@
-# ParkLink - Back-End (contenedor de la API Flask)
+# ParkLink - Back-End (API Flask + MySQL por entorno)
 #
 # Uso en el servidor (staging/production):
 #   docker compose up -d --build
 #
-# El archivo .env debe existir junto a este archivo (lo genera el workflow
-# de despliegue) con: APP_PORT, DATABASE_URL, SECRET_KEY y JWT_SECRET_KEY.
+# staging y production corren en la MISMA instancia EC2, asi que todo lo que
+# Docker nombra de forma global lleva el sufijo del entorno mediante
+# PARKLINK_ENV (lo exporta el workflow como "staging"/"production"):
+#   proyecto   -> parklink-<entorno>
+#   contenedor -> parklink-<entorno>-web
+#   imagen     -> parklink-<entorno>-backend:latest
+#   red        -> parklink-<entorno>-net
+#   volumen BD -> parklink-<entorno>-db
+#   puerto     -> APP_PORT del .env (8000 staging / 8001 production)
+# Sin PARKLINK_ENV (uso local) todo queda como parklink-local-*.
+#
+# Cada entorno levanta su propio MySQL: no comparten puerto, red, volumen ni
+# credenciales. El host de DATABASE_URL debe ser "db" (servicio interno).
 services:
   web:
     build:
       context: .
       dockerfile: Dockerfile
-    image: parklink-backend:latest
-    container_name: parklink-backend
+    # Etiqueta de imagen por entorno: staging y production no comparten un
+    # :latest mutable en el mismo host.
+    image: parklink-${PARKLINK_ENV:-local}-backend:latest
+    # Nombre explicito con sufijo de entorno en lugar de un container_name
+    # fijo: elimina el conflicto al desplegar ambos entornos en paralelo.
+    container_name: parklink-${PARKLINK_ENV:-local}-web
     restart: unless-stopped
     env_file:
       - .env
     environment:
       # La app escucha en 5000 dentro del contenedor (ver Dockerfile / wsgi.py).
       APP_PORT: "5000"
+    # La app arranca solo cuando su MySQL propio responde con SELECT 1.
+    depends_on:
+      db:
+        condition: service_healthy
     ports:
       # APP_PORT (valor del .env de cada entorno) -> 5000 del contenedor.
-      # Si APP_PORT no está definido, usa 5000.
+      # Si APP_PORT no esta definido, usa 5000.
       - "${APP_PORT:-5000}:5000"
     healthcheck:
       test:
@@ -37,3 +56,48 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    # mysql_native_password evita depender de "cryptography" en la imagen de la
+    # app; el buffer pool bajo mantiene el consumo de RAM contenido (EC2 2 GB).
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --innodb-buffer-pool-size=64M
+    environment:
+      # Credenciales derivadas de DATABASE_URL por el workflow (nunca en el repo).
+      MYSQL_DATABASE: ${DB_NAME:?DB_NAME requerido}
+      MYSQL_USER: ${DB_USER:?DB_USER requerido}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD requerido}
+      # Root con password aleatoria que solo se registra en los logs del
+      # contenedor en el primer arranque; nadie la necesita para operar.
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "mysql --protocol=TCP -h127.0.0.1 -u$$MYSQL_USER -p$$MYSQL_PASSWORD -e 'SELECT 1' >/dev/null 2>&1"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  db_data:
+    # Volumen propio por entorno: los datos nunca se mezclan.
+    name: parklink-${PARKLINK_ENV:-local}-db
+
+networks:
+  default:
+    # Red aislada por entorno: parklink-<entorno>-net. Evita que staging y
+    # production compartan red, DNS de servicio o alias.
+    name: parklink-${PARKLINK_ENV:-local}-net

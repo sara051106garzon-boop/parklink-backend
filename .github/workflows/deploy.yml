@@ -117,7 +117,10 @@ jobs:
           # 1) Actualizar el código en DEPLOY_PATH
           if [ -d .git ]; then
             git fetch --prune --tags origin
-            git reset --hard "origin/$GITHUB_REF_NAME"
+            # Un tag (v1.0.0) no existe como origin/<tag>; FETCH_HEAD sirve
+            # tanto para ramas como para tags.
+            git fetch origin "$GITHUB_REF_NAME"
+            git reset --hard FETCH_HEAD
             git clean -fd
           else
             # Primera vez: DEPLOY_PATH vacío -> clonar el repo ahí.
@@ -137,6 +140,39 @@ jobs:
             printf 'FLASK_DEBUG=0\n'
           } > .env
           chmod 600 .env
+
+          # Cada entorno es un proyecto Compose independiente en el mismo host.
+          # El nombre de proyecto coincide con el que usaba el compose anterior
+          # (parklink-<entorno>) para que "down" tambien elimine contenedores
+          # legacy y libere el puerto antes de comprobar colisiones.
+          export COMPOSE_PROJECT_NAME="parklink-$DEPLOY_ENV"
+          export PARKLINK_ENV="$DEPLOY_ENV"
+
+          # Credenciales MySQL del servicio "db" derivadas de DATABASE_URL
+          # (formato: mysql+pymysql://usuario:clave@db:3306/base). Asi no se
+          # duplican secrets: la misma URL alimenta app y contenedor de BD.
+          db_url="${APP_ENV_DATABASE_URL#mysql+pymysql://}"
+          db_url="${db_url#mysql://}"
+          db_creds="${db_url%%@*}"
+          db_rest="${db_url#*@}"
+          if [ "$db_rest" = "$db_url" ] || [ "$db_creds" = "$db_url" ]; then
+            echo "::error::DATABASE_URL de $DEPLOY_ENV no tiene el formato mysql+pymysql://usuario:clave@host:puerto/base."
+            exit 1
+          fi
+          DB_USER="${db_creds%%:*}"
+          DB_PASSWORD="${db_creds#*:}"
+          DB_NAME="${db_rest##*/}"
+          DB_NAME="${DB_NAME%%\?*}"
+          if [ -z "$DB_USER" ] || [ -z "$DB_PASSWORD" ] || [ -z "$DB_NAME" ]; then
+            echo "::error::No se pudieron extraer usuario/clave/base de DATABASE_URL ($DEPLOY_ENV)."
+            exit 1
+          fi
+          export DB_USER DB_PASSWORD DB_NAME
+
+          # Puerto publicado en el host (8000 staging / 8001 production). Se lee
+          # aqui para reutilizarlo en la comprobacion de colisiones y /health.
+          puerto=$(sed -n 's/^APP_PORT=//p' .env | tail -n1)
+          puerto=${puerto:-5000}
 
           # 3) Docker debe estar disponible en la instancia
           if ! docker info >/dev/null 2>&1; then
@@ -159,12 +195,40 @@ jobs:
           fi
 
           $COMPOSE down --remove-orphans || true
+
+          # El otro entorno vive en el mismo EC2: si el puerto ya lo publica un
+          # contenedor de otro proyecto, se aborta antes de tocar nada.
+          if docker ps --format '{{.Ports}}' | grep -q ":${puerto}->"; then
+            echo "::error::El puerto ${puerto} ya esta en uso en este host. Asigna un APP_PORT distinto a $DEPLOY_ENV."
+            docker ps --format 'table {{.Names}}\t{{.Ports}}'
+            exit 1
+          fi
+
           $COMPOSE up -d --build --remove-orphans
+
+          # 5) Aplicar migraciones (idempotente) contra MySQL del entorno.
+          #    Se reintenta mientras el contenedor de BD termina de arrancar.
+          migrado=0
+          for intento in $(seq 1 20); do
+            if $COMPOSE exec -T web flask --app wsgi db upgrade; then
+              migrado=1
+              break
+            fi
+            echo "MySQL aun no acepta conexiones (intento ${intento}/20)..."
+            sleep 3
+          done
+          if [ "$migrado" -ne 1 ]; then
+            echo "::error::No se pudieron aplicar las migraciones en $DEPLOY_ENV."
+            $COMPOSE logs --tail=80 db || true
+            exit 1
+          fi
+
+          # 6) Comprobar conexion real a la base de datos (SELECT 1).
+          $COMPOSE exec -T web python -c \
+            "from sqlalchemy import text; from app import create_app; from app.database.database import db; app = create_app(); ctx = app.app_context(); ctx.push(); print('DB OK:', db.session.execute(text('SELECT 1')).scalar()); ctx.pop()"
           $COMPOSE ps
 
-          # 5) Verificar que el contenedor responde (usa APP_PORT del .env)
-          puerto=$(sed -n 's/^APP_PORT=//p' .env | tail -n1)
-          puerto=${puerto:-5000}
+          # 7) Verificar que el contenedor responde (usa APP_PORT del .env)
 
           # La primera vez hay que descargar la imagen base y compilar
           # dependencias: 30 intentos x 3 s = hasta 90 s.
@@ -180,7 +244,7 @@ jobs:
           # Fallo: mostrar estado del contenedor, healthcheck de Docker y logs.
           echo "::group::Estado del contenedor"
           $COMPOSE ps || true
-          docker inspect --format '{{.State.Status}} | {{range .State.Health.Status}}{{.}}{{end}}' parklink-backend || true
+          docker inspect --format '{{.State.Status}} | {{range .State.Health.Status}}{{.}}{{end}}' $($COMPOSE ps -q web) || true
           echo "::endgroup::"
           echo "::group::Últimos logs"
           $COMPOSE logs --tail=80 || true
