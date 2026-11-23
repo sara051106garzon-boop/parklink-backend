@@ -6,6 +6,8 @@ Responsabilidades de este archivo:
 1. Dejar el paquete ``app`` importable sin importar desde qué carpeta se lance ``pytest``.
 2. Ofrecer los fixtures de Flask (``flask_app``, ``client``, ``cliente_con_bd`` y ``app_con_contexto_de_prueba``).
 3. Etiquetar automáticamente cada prueba como ``unit``, ``integration`` o ``e2e`` según su carpeta.
+4. Bloquear, para TODA la suite, cualquier conexión real a MySQL (protege los
+   datos de staging/production incluso si el entorno trae ``DATABASE_URL``).
 """
 
 import sys
@@ -25,6 +27,34 @@ import app.models  # noqa: F401
 # URI alternativa para las pruebas que necesitan una base real. Es SQLite en
 # memoria: se crea al pedir el fixture `cliente_con_bd` y desaparece al final.
 TEST_DATABASE_URI = "sqlite://"
+
+
+@pytest.fixture(autouse=True)
+def bloquear_conexiones_mysql(monkeypatch):
+    """Impide cualquier conexión real a MySQL durante toda la suite.
+
+    Los fixtures de este archivo y los de cada integrante recrean el engine
+    sobre SQLite en memoria, así que ninguna prueba legítima necesita MySQL.
+    Si una prueba (o un fixture futuro) intentara conectarse, se detiene aquí
+    en lugar de escribir en la base de staging o production.
+    """
+    import pymysql
+
+    def conexion_rechazada(*args, **kwargs):
+        pytest.fail(
+            "Conexión a MySQL bloqueada durante las pruebas: usa SQLite en "
+            "memoria (fixtures cliente_con_bd / app_con_contexto_de_prueba)."
+        )
+
+    monkeypatch.setattr(pymysql, "connect", conexion_rechazada, raising=False)
+
+    # mysqlclient (Flask-MySQLdb) también queda bloqueado si está instalado.
+    try:
+        import MySQLdb  # type: ignore[import-not-found]
+    except ImportError:
+        pass
+    else:
+        monkeypatch.setattr(MySQLdb, "connect", conexion_rechazada, raising=False)
 
 
 def pytest_collection_modifyitems(items):

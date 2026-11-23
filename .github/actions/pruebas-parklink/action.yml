@@ -1,0 +1,91 @@
+name: Suite de pruebas ParkLink
+description: >-
+  Instala Python y ejecuta pytest con aislamiento total: sin secrets de
+  staging/production, sin DATABASE_URL y sin conexiones a MySQL reales
+  (los fixtures usan SQLite en memoria).
+
+# Acción compuesta reutilizada por:
+#   - .github/workflows/tests.yml  (pruebas en cada push / PR)
+#   - .github/workflows/deploy.yml (job "tests" que bloquea el despliegue)
+# Al vivir en un solo archivo, ambos pipelines ejecutan exactamente la misma
+# suite con el mismo entorno. Si la suite falla, el paso falla y con él el job.
+
+inputs:
+  python-version:
+    description: Versión de Python usada para las pruebas.
+    required: false
+    default: "3.12"
+
+runs:
+  using: composite
+  steps:
+    - name: Configurar Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+        cache: pip
+        cache-dependency-path: requirements.txt
+
+    - name: Dependencias del sistema (mysqlclient)
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          build-essential \
+          pkg-config \
+          default-libmysqlclient-dev
+
+    - name: Instalar dependencias de Python
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    # Barrera de seguridad: aunque alguien configure un secret a nivel de
+    # repositorio (que se inyecta como variable de entorno en TODOS los jobs),
+    # este paso detiene el pipeline antes de ejecutar una sola prueba.
+    - name: Verificar aislamiento de la base de datos
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ -n "${DATABASE_URL:-}" ]; then
+          echo "::error::DATABASE_URL está definida en el job de pruebas. La suite debe usar SQLite en memoria y nunca staging/production."
+          exit 1
+        fi
+        python - <<'PY'
+        from urllib.parse import urlsplit
+
+        from app.config.settings import Config
+
+        uri = Config.SQLALCHEMY_DATABASE_URI or ""
+        print(f"URI configurada para la suite: {uri}")
+
+        if uri.startswith("sqlite"):
+            print("OK: SQLite (sin servidor, en memoria).")
+        else:
+            host = urlsplit(uri).hostname or ""
+            if host not in {"localhost", "127.0.0.1", "::1"}:
+                raise SystemExit(
+                    f"ABORTADO: la suite apuntaría a la base de datos remota '{host}'."
+                )
+            print(
+                f"OK: host local '{host}'. La suite no se conecta: "
+                "todos los fixtures usan SQLite en memoria."
+            )
+        PY
+
+    - name: Ejecutar la suite de pruebas
+      shell: bash
+      run: pytest -v
+
+    - name: Resumen del resultado
+      if: always()
+      shell: bash
+      run: |
+        {
+          echo "### Resultado de las pruebas"
+          echo ""
+          echo "- Commit: \`$GITHUB_SHA\`"
+          echo "- Ref: \`$GITHUB_REF_NAME\`"
+          echo "- Base de datos de pruebas: SQLite en memoria (sin \`DATABASE_URL\`)"
+        } >> "$GITHUB_STEP_SUMMARY"

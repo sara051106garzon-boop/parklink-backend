@@ -2,6 +2,10 @@ name: Pruebas
 
 # Se ejecuta en cada push (a cualquier rama) y en cada Pull Request hacia main.
 # Así cada integrante ve si sus pruebas rompen algo antes de pedir el merge.
+#
+# Los mismos pasos se reutilizan desde "Despliegue a AWS EC2" mediante la acción
+# compuesta .github/actions/pruebas-parklink, de modo que el despliegue solo
+# ocurre si esta misma suite pasa.
 on:
   push:
     branches: ["**"]
@@ -25,36 +29,7 @@ jobs:
       - name: Descargar el código
         uses: actions/checkout@v4
 
-      - name: Configurar Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: requirements.txt
-
-      - name: Dependencias del sistema (mysqlclient)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential \
-            pkg-config \
-            default-libmysqlclient-dev
-
-      - name: Instalar dependencias de Python
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Verificar que la app importa
-        run: python -c "import app; print('app importada correctamente')"
-
+      # Sin `environment:`: este job no recibe los secrets de staging ni de
+      # production. La suite corre sobre SQLite en memoria.
       - name: Ejecutar la suite de pruebas
-        run: pytest -v
-
-      - name: Resumen del resultado
-        if: always()
-        run: |
-          echo "### Resultado de las pruebas" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "Rama: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+        uses: ./.github/actions/pruebas-parklink

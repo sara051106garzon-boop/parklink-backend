@@ -7,6 +7,10 @@ name: Despliegue a AWS EC2
 #
 # Al publicar un tag, GitHub también dispara el evento de push a "main"; el
 # job de staging se omite en ese caso para desplegar solo producción.
+#
+# El job "tests" se ejecuta SIEMPRE antes de tocar el servidor: el job "deploy"
+# depende de él (needs: tests), así que una prueba fallida deja el despliegue en
+# "skipped" y el workflow en rojo sin reiniciar staging ni production.
 on:
   push:
     branches: [main]
@@ -40,10 +44,32 @@ permissions:
   contents: read
 
 jobs:
+  # ── 1. Pruebas obligatorias (puerta del despliegue) ───────────────────────
+  # Ejecuta la misma acción compuesta que usa el workflow "Pruebas".
+  # No declara `environment:`: no recibe ninguno de los 8 secrets de staging ni
+  # de production, y la suite corre sobre SQLite en memoria. Aunque alguien
+  # defina DATABASE_URL, la acción aborta antes de ejecutar pytest.
+  tests:
+    name: Pruebas (bloquean el despliegue)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Ejecutar la suite de pruebas
+        uses: ./.github/actions/pruebas-parklink
+
+  # ── 2. Despliegue (solo si las pruebas pasaron) ───────────────────────────
   deploy:
     name: Desplegar en ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || (github.ref_type == 'tag' && 'production' || 'staging') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Si "tests" falla, este job ni se ejecuta: staging/production no se tocan.
+    needs: tests
 
     # Solo desde la rama principal (lanzamiento manual a staging/production).
     # Se escribe con ${{ }} para que se evalúe como expresión booleana y no
@@ -272,6 +298,7 @@ jobs:
           echo "### Despliegue a AWS EC2" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "- Entorno: \`${DEPLOY_ENV:-desconocido}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Pruebas previas: \`${{ needs.tests.result }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Resultado: \`${{ job.status }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Commit: \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Ref: \`${{ github.ref_name }}\`" >> "$GITHUB_STEP_SUMMARY"
