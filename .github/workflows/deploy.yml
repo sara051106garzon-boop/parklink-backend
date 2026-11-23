@@ -260,7 +260,8 @@ jobs:
           printf '%s\n' "$REMOTE_SCRIPT" | ssh -i ~/.ssh/ec2_deploy_key \
             -o StrictHostKeyChecking=yes -o ConnectTimeout=20 \
             "$EC2_USER@$EC2_HOST" \
-            "export DEPLOY_PATH='$DEPLOY_PATH' APP_ENV_PORT='$APP_PORT' \
+            "export DEPLOY_PATH='$DEPLOY_PATH' DEPLOY_ENV='$DEPLOY_ENV' \
+          APP_ENV_PORT='$APP_PORT' \
           APP_ENV_DATABASE_URL='$DATABASE_URL' APP_ENV_SECRET_KEY='$SECRET_KEY' \
           APP_ENV_JWT_SECRET_KEY='$JWT_SECRET_KEY' GITHUB_REF_NAME='$GITHUB_REF_NAME' \
           GITHUB_REPOSITORY_URL='$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git'; bash -s"
