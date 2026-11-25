@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: Pruebas autom??ticas
+    name: Pruebas automatizadas
     runs-on: ubuntu-latest
 
     services:
@@ -28,7 +28,7 @@ jobs:
           --health-retries=10
 
     steps:
-      - name: Descargar c??digo
+      - name: Descargar codigo
         uses: actions/checkout@v4
 
       - name: Configurar Python
