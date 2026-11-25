@@ -46,7 +46,7 @@ jobs:
         if: hashFiles('tests/andres/unit/**') != ''
         run: pytest tests/andres/unit -v
 
-      - name: Ejecutar pruebas de integraci??n
+      - name: Ejecutar pruebas de integracion
         env:
           JWT_SEED: prueba-ci
           DATABASE_URL: mysql+pymysql://miapi_user:miapi_pass@127.0.0.1:3306/miapi_test?charset=utf8mb4
