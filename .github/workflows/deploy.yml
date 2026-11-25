@@ -43,14 +43,14 @@ jobs:
           pip install -r requirements-dev.txt
 
       - name: Ejecutar pruebas unitarias
-        if: hashFiles('tests/unit/**') != ''
-        run: pytest tests/unit -v
+        if: hashFiles('tests/andres/unit/**') != ''
+        run: pytest tests/andres/unit -v
 
       - name: Ejecutar pruebas de integración
         env:
           JWT_SEED: prueba-ci
           DATABASE_URL: mysql+pymysql://miapi_user:miapi_pass@127.0.0.1:3306/miapi_test?charset=utf8mb4
-        run: pytest tests/integration -v
+        run: pytest tests/andres/integration -v
 
   deploy:
     name: Desplegar en AWS EC2
