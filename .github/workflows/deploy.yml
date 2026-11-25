@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: Pruebas automáticas
+    name: Pruebas autom??ticas
     runs-on: ubuntu-latest
 
     services:
@@ -28,7 +28,7 @@ jobs:
           --health-retries=10
 
     steps:
-      - name: Descargar código
+      - name: Descargar c??digo
         uses: actions/checkout@v4
 
       - name: Configurar Python
@@ -46,7 +46,7 @@ jobs:
         if: hashFiles('tests/andres/unit/**') != ''
         run: pytest tests/andres/unit -v
 
-      - name: Ejecutar pruebas de integración
+      - name: Ejecutar pruebas de integraci??n
         env:
           JWT_SEED: prueba-ci
           DATABASE_URL: mysql+pymysql://miapi_user:miapi_pass@127.0.0.1:3306/miapi_test?charset=utf8mb4
