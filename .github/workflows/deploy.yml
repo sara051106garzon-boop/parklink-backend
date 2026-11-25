@@ -53,20 +53,20 @@ jobs:
         run: pytest tests/andres/integration -v
 
   deploy:
-    name: Desplegar en AWS EC2
-    needs: test
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
+          name: Desplegar en AWS EC2
+          needs: test
+          if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+          runs-on: ubuntu-latest
 
-    steps:
-      - name: Conectar por SSH y ejecutar deploy.sh
-        env:
-          EC2_HOST: ${{ secrets.EC2_HOST }}
-          EC2_USER: ${{ secrets.EC2_USER }}
-          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
-        run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
-          ssh -i ~/.ssh/deploy_key "$EC2_USER@$EC2_HOST"
+          steps:
+            - name: Conectar por SSH y ejecutar deploy.sh
+              env:
+                EC2_HOST: ${{ secrets.EC2_HOST }}
+                EC2_USER: ${{ secrets.EC2_USER }}
+                EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+              run: |
+                mkdir -p ~/.ssh
+                printf '%s\n' "$EC2_SSH_KEY" | tr -d '\r' > ~/.ssh/deploy_key
+                chmod 600 ~/.ssh/deploy_key
+                ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+                ssh -i ~/.ssh/deploy_key "$EC2_USER@$EC2_HOST"
